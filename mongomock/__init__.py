@@ -16,7 +16,6 @@ except ImportError:
 
 __all__ = ['Connection', 'Database', 'Collection', 'ObjectId']
 
-
 RE_TYPE = type(re.compile(''))
 
 
@@ -117,6 +116,10 @@ class Database(object):
         return list(self._collections.keys())
 
 
+class DuplicateKeyError(Exception):
+    """Raised when a safe insert or update fails due to a duplicate key error."""
+
+
 class Collection(object):
     def __init__(self, db):
         super(Collection, self).__init__()
@@ -132,9 +135,11 @@ class Collection(object):
         if not '_id' in data:
             data['_id'] = ObjectId()
         object_id = data['_id']
-        assert object_id not in self._documents
-        self._documents[object_id] = dict(data)
-        return object_id
+        if object_id not in self._documents:
+            self._documents[object_id] = dict(data)
+            return object_id
+        else:
+            raise DuplicateKeyError
 
     def update(self, spec, document, upsert=False, manipulate=False,
                safe=False, multi=False, _check_keys=False, **kwargs):
